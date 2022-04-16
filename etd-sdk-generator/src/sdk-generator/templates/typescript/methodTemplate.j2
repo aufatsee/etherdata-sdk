@@ -1,0 +1,24 @@
+import axios from "axios"
+
+{%- for returnType in functionReturnTypes %}
+export interface {{returnType.type}} {{ returnType.code | safe }}
+{% endfor %}
+
+{{ methodComment }}
+export class {{ methodName | camelCase | capitalize }}{
+    baseURL: string
+    port?: number
+    url: string
+
+    constructor(baseURL: string, port?: number) {
+        this.baseURL = baseURL;
+        this.port = port;
+        this.url = port ? `${baseURL}:${port}` : baseURL;
+    }
+
+
+{%- for function in functions %}
+{{ function[1] | safe }}
+{% endfor %}
+
+}

@@ -1,0 +1,150 @@
+# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
+# For more information see: https://help.github.com/actions/language-and-framework-guides/publishing-nodejs-packages
+
+name: Build And Publish SDK
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - run: yarn
+        working-directory: etd-sdk-generator
+      - run: yarn test
+        name: Testing generator
+        working-directory: etd-sdk-generator
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - run: yarn
+        working-directory: etd-sdk-generator
+      - run: yarn start
+        working-directory: etd-sdk-generator
+
+  build-kotlin:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 15
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - uses: gradle/gradle-build-action@v2
+        with:
+          arguments: build
+          build-root-directory: sdk-dist/kotlin
+      - uses: gradle/gradle-build-action@v2
+        name: Building Kotlin Docs
+        with:
+          arguments: dokkaHtml
+          build-root-directory: sdk-dist/kotlin
+
+
+  build-typescript-npm:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org/
+      - run: yarn
+        name: Installing dependencies
+        working-directory: sdk-dist/typescript
+      - run: yarn test
+        name: Testing
+        working-directory: sdk-dist/typescript
+      - run: yarn build
+        name: Building dist
+        working-directory: sdk-dist/typescript
+      - run: yarn doc
+        name: Building documentation
+        working-directory: sdk-dist/typescript
+
+  build-react-ui-npm:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org/
+      - run: yarn
+        name: Installing dependencies
+        working-directory: sdk-dist/etd-react-ui
+      - run: yarn build
+        name: Building dist
+        working-directory: sdk-dist/etd-react-ui
+
+  build-python:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.9
+    - name: Install Pep8
+      run: pip install -r requirements.txt
+      working-directory: sdk-dist/python
+    - name: Testing
+      run: pytest
+      working-directory: sdk-dist/python
+    - name: Install pypa/build
+      run: >-
+        python -m
+        pip install
+        build
+        --user
+      working-directory: sdk-dist/python
+    - name: Build a binary wheel and a source tarball
+      run: >-
+        python -m
+        build
+        --sdist
+        --wheel
+        --outdir dist/
+        .
+      working-directory: sdk-dist/python
+
+
+  release:
+    runs-on: ubuntu-latest
+    if: ${{ (github.event.pusher.name != 'github action') && (github.ref == 'refs/heads/main') }}
+    needs: [build-kotlin, build-react-ui-npm, build-typescript-npm, build-python]
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+      - run: yarn install
+        name: Installing dependencies
+      - name: Setup git identity
+        run: |
+          git config --global user.email "github-action.github.com"
+          git config --global user.name "github action"
+      - name: Release
+        run: yarn release --ci
+        env:
+          GITHUB_TOKEN: ${{secrets.RELEASE_TOKEN}}

@@ -1,0 +1,24 @@
+{
+  "npm": {
+    "publish": false
+  },
+  "github": {
+    "release": true
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "angular",
+      "infile": "CHANGELOG.md",
+      "header": "# Changelog"
+    },
+    "@release-it/bumper": {
+      "out": [
+        "sdk-dist/etd-react-ui/package.json",
+        "sdk-dist/typescript/package.json"
+      ]
+    }
+  },
+  "hooks": {
+    "after:bump": "node bump-version.js ${version}"
+  }
+}

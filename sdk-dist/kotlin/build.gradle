@@ -1,0 +1,64 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.5.10'
+    id 'application'
+    id("org.jetbrains.dokka") version "1.6.0"
+    id 'java-library-distribution'
+    id("maven-publish")
+}
+archivesBaseName = 'etherdata-sdk'
+group = 'etherdata-blockchain'
+version = 'v4.0.2'
+repositories {
+    mavenCentral()
+}
+dependencies {
+    testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    implementation 'io.ktor:ktor-client-core:1.6.7'
+    implementation 'io.ktor:ktor-client-cio:1.6.7'
+    implementation 'io.ktor:ktor-client-serialization:1.6.7'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect:1.6.10'
+    implementation 'io.ktor:ktor-client-gson:1.6.7'
+    implementation 'com.alibaba:fastjson:1.2.79'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation "org.apache.httpcomponents:httpclient:4.5.13"
+    implementation "org.apache.httpcomponents:httpmime:4.5.13"
+    implementation files("libs/dfs-java-sdk-1.13-SNAPSHOT.jar")
+}
+test {
+    useJUnitPlatform()
+}
+distributions {
+    main {
+        distributionBaseName = "etherdata-sdk"
+    }
+}
+tasks.withType(Zip){
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+tasks.withType(Tar){
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+compileKotlin {
+    kotlinOptions.jvmTarget = '15'
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = '15'
+}
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/etherdata-blockchain/etherdata-sdk")
+            credentials {
+                username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
+                password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+            }
+        }
+    }
+    publications {
+        gpr(MavenPublication) {
+            artifactId="etherdata-sdk"
+            from(components.java)
+        }
+    }
+}

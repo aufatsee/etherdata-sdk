@@ -1,0 +1,26 @@
+package com.etd
+
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.features.json.*
+import io.ktor.client.features.json.serializer.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+
+{{ methodComment }}
+class {{ methodName }}(val url: String){
+
+{%- for returnType in functionReturnTypes %}
+data class {{returnType.type}} {{ returnType.code | safe }}
+{% endfor %}
+
+private val client = HttpClient(){
+    install(JsonFeature) {
+        serializer = GsonSerializer()
+    }
+}
+
+{%- for function in functions %}
+{{ function[1] | safe }}
+{% endfor %}
+}
